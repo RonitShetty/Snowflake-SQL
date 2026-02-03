@@ -53,7 +53,8 @@ This repository demonstrates enterprise-grade data engineering patterns in **Sno
 
 
 ## 📸 Screenshots & Output
-[📄 View Project Screenshots (PDF)](./Project_Screenshots.pdf)
+[📄 View Project Screenshots (PDF)](./Project_Summary_&_Screenshots.pdf)
+
 ## 🛠️ Technologies Used
 * **Snowflake Data Cloud**
 * **SQL (ANSI Standard + Snowflake Extensions)**
