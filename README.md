@@ -1,64 +1,124 @@
-# ❄️ Snowflake Employee Data Analysis
+# ❄️ Snowflake Enterprise Data Pipeline & Analytics
 
-This repository demonstrates enterprise-grade data engineering patterns in **Snowflake Data Cloud**. It showcases two specific workflows: handling multi-part **CSV** uploads for employee records and performing ELT (Extract, Load, Transform) on **Parquet** files for complex analytics.
+![Snowflake](https://img.shields.io/badge/Snowflake-Data_Cloud-29B5E8?style=for-the-badge&logo=snowflake&logoColor=white)
+![Azure](https://img.shields.io/badge/Azure-Blob_Storage-0078D4?style=for-the-badge&logo=microsoftazure&logoColor=white)
+![SQL](https://img.shields.io/badge/SQL-Advanced-CC2927?style=for-the-badge&logo=microsoft-sql-server&logoColor=white)
+![ThoughtSpot](https://img.shields.io/badge/ThoughtSpot-BI_&_Analytics-F38B00?style=for-the-badge)
 
-## 📂 Repository Structure
+> **A production-ready Data Engineering project showcasing a Medallion Architecture (Bronze/Silver/Gold), automated ELT pipelines, SCD Type 2 historical tracking, and self-service BI integration.**
+
+---
+
+## 🏗️ Architecture Overview
+
+This project simulates a real-world enterprise data environment. It ingests raw data from **Azure Blob Storage** and **CSVs**, processes it through a multi-layered pipeline using **Snowflake Stored Procedures**, and serves insights via **ThoughtSpot**.
+
+```mermaid
+graph LR
+    A[Azure Blob / CSVs] -->|Ingest| B(Bronze Layer - Raw)
+    B -->|Clean & Dedupe| C(Silver Layer - Clean)
+    C -->|SCD Type 2 Logic| D(Gold Layer - Curated)
+    D -->|Visualize| E[ThoughtSpot / SQL Analytics]
+    style A fill:#f9f,stroke:#333,stroke-width:2px
+    style B fill:#e1f5fe,stroke:#29B5E8
+    style C fill:#f3e5f5,stroke:#9c27b0
+    style D fill:#fff9c4,stroke:#fbc02d
+    style E fill:#e0f2f1,stroke:#009688
+
+```
+
+---
+
+## 📂 Repository Contents
+
+This repository contains **17 SQL scripts** organizing the end-to-end workflow, from infrastructure setup to advanced governance.
+
+### 1️⃣ Infrastructure & Configuration
 
 | File Name | Description |
-| :--- | :--- |
-| **`Create_DB.sql`** | Initial setup script to create the `DEMO_DB` database, `DEMO_SC` schema, and the `EMP` table structured for CSV loading. |
-| **`load_to_azure.sql`** | Configures a Storage Integration (`azure_int`) to connect Snowflake securely with Azure Blob Storage. |
-| **`Titanic_Table_Creation.sql`** | Sets up the Titanic environment, including a custom `PARQUET` file format and the primary table schema. |
-| **`Titanic_manual_load.sql`** | Demonstrates loading binary **Parquet** data into a staging table using variant parsing (`$1`) and creating a simplified View. |
-| **`Titanic_Queries.sql`** | Analytical queries on the Titanic dataset (Survival rates, Class analysis, etc.). |
-| **`Basic_Queries.sql`** | Fundamental SQL operations on the Employee table (Filtering, Sorting, Aggregation). |
-| **`Temporary_Table_Queries.sql`** | Advanced analysis using **Temporary Tables**, including email domain parsing and tenure calculation. |
-| **`Monthwise_Hires.sql`** | Reporting query to analyze hiring trends by month for 2017. |
-| **`Verifying_Data_Load.sql`** | Quality assurance scripts to verify row counts and data integrity. |
+| --- | --- |
+| **`Connecting_Azure_Data_Stages.sql`** | ☁️ **Azure Integration:** Configures Storage Integrations, External Stages, and schemas (Bronze/Silver/Gold). |
+| **`Create_DB.sql`** | 🏗️ **Database Setup:** Initial script creating `DEMO_DB` and the `EMP` table for CSV ingestion. |
+| **`Titanic_Table_Creation.sql`** | ⚙️ **Parquet Config:** Defines the `TITANIC` schema and custom `PARQUET` file formats. |
+| **`load_to_azure.sql`** | 🔌 **Legacy Config:** Initial Azure integration setup (kept for reference on storage policies). |
 
-## 📊 Datasets & Formats
+### 2️⃣ Ingestion (Bronze Layer)
 
-### 1. Employee Data (CSV)
-* **Source Format:** **CSV** (Comma Separated Values)
-* **File Structure:** Split across 5 separate files (`employees01.csv` – `employees05.csv`).
-* **Target Table:** `DEMO_DB.DEMO_SC.EMP`
-* **Schema:** `first_name`, `last_name`, `email`, `streetaddress`, `city`, `start_date`.
-* **Workflow:** These 5 CSV files are loaded into the standard relational `EMP` table for unified analysis.
+| File Name | Description |
+| --- | --- |
+| **`Titanic_manual_load.sql`** | 📥 **ELT Ingestion:** Loads raw Parquet data into staging, parsing variant columns (e.g., `$1:Age`) on-the-fly. |
+| **`Verifying_Data_Load.sql`** | ✅ **Quality Assurance:** Immediate row count checks and data integrity verification post-load. |
 
-### 2. Titanic Data (Parquet)
-* **Source Format:** **Parquet** (Columnar Storage)
-* **File Name:** `titanic.parquet`
-* **Target Table:** `DEMO_DB.DEMO_SC.TITANIC` (and `TITANIC_RAW`)
-* **Workflow:** Loaded using a specialized Parquet file format (`my_parquet_format`). The load process transforms the raw data on-the-fly (e.g., casting `$1:Survived` integers to booleans).
+### 3️⃣ Transformation (Silver Layer)
 
-## 🚀 Key Features
+| File Name | Description |
+| --- | --- |
+| **`sp_load_silver_titanic.sql`** | 🤖 **Stored Procedure:** Automates cleaning, casting, and deduplication (using `QUALIFY ROW_NUMBER`). |
 
-### 1. Mixed-Format Ingestion
-* **Structured (CSV):** Handling standard structured data imports for the Employee roster.
-* **Semi-Structured (Parquet):** utilizing Snowflake's variant syntax (`$1:Key`) to parse binary files directly into tables.
+### 4️⃣ Dimensional Modeling (Gold Layer)
 
-### 2. Analytics & Reporting
-* **Date & Time:** Calculating employment tenure with `DATEDIFF` and analyzing hiring trends by `MONTHNAME`.
-* **Text Processing:** parsing email domains using `SPLIT_PART` and handling address wildcards.
-* **Statistical Analysis:** Aggregating survival rates, average fares, and age demographics.
+| File Name | Description |
+| --- | --- |
+| **`SCD2.sql`** | 📐 **DDL:** Defines the `dim_passenger_scd2` table structure for Slowly Changing Dimensions. |
+| **`sp_load_dim_passenger_scd2.sql`** | 🔄 **SCD Type 2 Logic:** Complex Stored Procedure using **Hash Diffs** to detect changes and track history (`effective_start/end_date`). |
+| **`Data_Analysis.sql`** | 📊 **Reporting Marts:** Aggregates data for BI (e.g., `survival_by_age_group`, `survival_by_class`). |
 
-## 🛠️ Usage Guide
+### 5️⃣ Orchestration
 
-1.  **Setup:** Run `Create_DB.sql` to initialize the database and `EMP` table.
-2.  **Connections:** Run `load_to_azure.sql` to link your Azure Blob Storage.
-3.  **Data Loading:**
-    * **Employees:** Load the 5 CSV files into the `EMP` table using standard CSV file formats.
-    * **Titanic:** Run `Titanic_Table_Creation.sql` to define the Parquet format, then `Titanic_manual_load.sql` to ingest the Parquet file.
-4.  **Analysis:** Run the various `*_Queries.sql` files to generate insights.
+| File Name | Description |
+| --- | --- |
+| **`Call_Procs.sql`** | 🚀 **Pipeline Trigger:** Single entry point to execute the Silver and Gold stored procedures sequentially. |
 
+### 6️⃣ Advanced Analytics (Ad-Hoc)
+
+| File Name | Description |
+| --- | --- |
+| **`Titanic_Queries.sql`** | 🚢 **Deep Dive:** Analytical queries on survival rates, demographics, and class privileges. |
+| **`Basic_Queries.sql`** | 🔎 **Employee Stats:** Fundamental filtering, sorting, and aggregation on the Employee dataset. |
+| **`Temporary_Table_Queries.sql`** | 🧪 **Session Analysis:** Uses Temporary Tables for complex text parsing (Email domains) and tenure calculations. |
+| **`Monthwise_Hires.sql`** | 📅 **Time Series:** Reporting query to analyze hiring trends specifically for the year 2017. |
+
+### 7️⃣ Data Governance & DevOps
+
+| File Name | Description |
+| --- | --- |
+| **`Zero_Copy_Cloning.sql`** | 🐑 **Cloning:** Creates instant "Sandbox" environments for safe testing without data duplication. |
+| **`Time_Travel.sql`** | ⏳ **Disaster Recovery:** Demonstrates restoring dropped tables or deleted rows using `AT(TIMESTAMP)` and `UNDROP`. |
+
+---
 
 ## 📸 Screenshots & Output
 [📄 View Project Screenshots (PDF)](./Project_Summary_&_Screenshots.pdf)
 
-## 🛠️ Technologies Used
-* **Snowflake Data Cloud**
-* **SQL (ANSI Standard + Snowflake Extensions)**
-* **Microsoft Azure Blob Storage** (Integration)
+---
+## 🌟 Key Highlights
+
+### 🚄 Automation
+
+* **Stored Procedures:** All transformation logic is encapsulated in SQL-based Stored Procedures.
+* **Orchestration:** The entire pipeline from Silver to Gold can be refreshed with two simple `CALL` commands.
+
+### 🧠 Advanced Modeling
+
+* **SCD Type 2:** Implemented full history tracking. If a passenger's record changes, the old record is expired, and a new active record is inserted.
+* **Hash Diffing:** Uses `HASH(col1, col2...)` to efficiently detect changes in large datasets without full row comparisons.
+
+### 🛡️ Governance & Safety
+
+* **Zero Copy Cloning:** Enables specific "Dev/Test" branches of the database in seconds.
+* **Time Travel:** Provides a safety net allowing the database to be queried as it existed in the past (up to 90 days).
+
+## 🛠️ Tech Stack
+
+* **Snowflake Data Cloud** (Warehousing, Compute, Governance)
+* **SQL** (Transformation, DDL, DML)
+* **Microsoft Azure** (Blob Storage Integration)
+* **ThoughtSpot** (Business Intelligence & Visualization)
 
 ---
+
 *Created by Ronit Shetty*
+
+```
+
+```
